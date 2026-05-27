@@ -1,113 +1,126 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-function App() {
+const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+const IMG = "https://image.tmdb.org/t/p/w500";
 
-const movies = {
+export default function App() {
 
-Happy:[
-{
-title:"Minions",
-poster:"https://image.tmdb.org/t/p/w500/dr02BdCNAUPVU07aOodwPYv6HCf.jpg",
-trailer:"https://www.youtube.com/embed/P9-FCC6I7u0"
-},
-{
-title:"Toy Story",
-poster:"https://image.tmdb.org/t/p/w500/uXDfjJbdP4ijW5hWSBrPrlKpxab.jpg",
-trailer:"https://www.youtube.com/embed/KYz2wyBy3kc"
+const [genres,setGenres]=useState([]);
+const [selectedGenre,setSelectedGenre]=useState(null);
+const [movies,setMovies]=useState([]);
+const [trailerUrl,setTrailerUrl]=useState(null);
+
+useEffect(()=>{
+
+fetch(
+
+`https://api.themoviedb.org/3/genre/movie/list?api_key=${API_KEY}`
+
+)
+
+.then(res=>res.json())
+
+.then(data=>{
+
+setGenres(data.genres||[]);
+
+});
+
+},[]);
+
+useEffect(()=>{
+
+if(!selectedGenre) return;
+
+fetch(
+
+`https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_genres=${selectedGenre.id}&sort_by=popularity.desc&vote_count.gte=3000`
+
+)
+
+.then(res=>res.json())
+
+.then(data=>{
+
+const topMovies=(data.results||[])
+
+.filter(movie=>movie.poster_path)
+
+.slice(0,20);
+
+setMovies(topMovies);
+
+});
+
+},[selectedGenre]);
+
+async function openTrailer(movieId){
+
+const res=await fetch(
+
+`https://api.themoviedb.org/3/movie/${movieId}/videos?api_key=${API_KEY}`
+
+);
+
+const data=await res.json();
+
+const trailer=(data.results||[])
+
+.find(
+
+(video)=>
+
+video.site==="YouTube" &&
+
+(video.type==="Trailer"||
+
+video.type==="Teaser")
+
+);
+
+if(trailer){
+
+setTrailerUrl(
+
+`https://www.youtube.com/embed/${trailer.key}`
+
+);
+
 }
-],
 
-Sad:[
-{
-title:"Soul",
-poster:"https://image.tmdb.org/t/p/w500/hm58Jw4Lw8OIeECIq5qyPYhAeRJ.jpg",
-trailer:"https://www.youtube.com/embed/xOsLIiBStEs"
-},
-{
-title:"Inside Out",
-poster:"https://image.tmdb.org/t/p/w500/2H1TmgdfNtsKlU9jKdeNyYL5y8T.jpg",
-trailer:"https://www.youtube.com/embed/seMwpP0yeu4"
+else{
+
+alert("No trailer available.");
+
 }
-],
 
-Romantic:[
-{
-title:"Titanic",
-poster:"https://image.tmdb.org/t/p/w500/9xjZS2rlVxm8SFx8kPC3aIGCOYQ.jpg",
-trailer:"https://www.youtube.com/embed/2e-eXJ6HgkQ"
 }
-],
 
-Thriller:[
-{
-title:"Joker",
-poster:"https://image.tmdb.org/t/p/w500/udDclJoHjfjb8Ekgsd4FDteOkCU.jpg",
-trailer:"https://www.youtube.com/embed/zAGVQLHvwOY"
-}
-],
+return(
 
-Angry:[
-{
-title:"John Wick",
-poster:"https://image.tmdb.org/t/p/w500/fZPSd91yGE9fCcCe6OoQr6E3Bev.jpg",
-trailer:"https://www.youtube.com/embed/C0BMx-qxsP4"
-}
-]
+<div style={styles.app}>
 
-};
-
-const [selectedMood,setSelectedMood] = useState("");
-const [selectedTrailer,setSelectedTrailer] = useState(null);
-
-return (
-
-<div style={{
-background:"linear-gradient(to bottom,#000,#141414)",
-minHeight:"100vh",
-color:"white",
-padding:"40px"
-}}>
-
-<h1 style={{
-color:"red",
-fontSize:"70px",
-textAlign:"center"
-}}>
+<h1 style={styles.logo}>
 MOODFLIX
 </h1>
 
-<h2 style={{
-textAlign:"center",
-marginBottom:"40px"
-}}>
-How are you feeling today?
-</h2>
+{!selectedGenre ? (
 
-<div style={{
-display:"flex",
-justifyContent:"center",
-gap:"15px",
-flexWrap:"wrap"
-}}>
+<div style={styles.genreWrap}>
 
-{Object.keys(movies).map((mood)=>(
+{genres.map((genre)=>(
 
 <button
-key={mood}
-onClick={()=>setSelectedMood(mood)}
 
-style={{
-padding:"14px 25px",
-background:"red",
-color:"white",
-border:"none",
-borderRadius:"25px",
-cursor:"pointer",
-fontSize:"16px"
-}}
+key={genre.id}
+
+style={styles.genreBtn}
+
+onClick={()=>setSelectedGenre(genre)}
+
 >
 
-{mood}
+{genre.name}
 
 </button>
 
@@ -115,71 +128,86 @@ fontSize:"16px"
 
 </div>
 
-{selectedMood && (
+):(
+
 
 <>
 
-<h2 style={{
-marginTop:"60px",
-marginBottom:"30px",
-textAlign:"center"
-}}>
-Recommended Movies for {selectedMood}
+<button
+
+style={styles.backBtn}
+
+onClick={()=>{
+
+setSelectedGenre(null);
+setMovies([]);
+
+}}
+
+>
+
+Back
+
+</button>
+
+<h2 style={styles.genreTitle}>
+
+{selectedGenre.name}
+
+Movies
+
 </h2>
 
-<div style={{
-display:"flex",
-justifyContent:"center",
-gap:"30px",
-flexWrap:"wrap"
-}}>
+<div style={styles.grid}>
 
-{movies[selectedMood].map((movie)=>(
+{movies.map((movie)=>(
 
 <div
-key={movie.title}
-
-style={{
-background:"#181818",
-borderRadius:"18px",
-width:"260px",
-overflow:"hidden",
-boxShadow:"0 0 25px rgba(255,0,0,0.3)"
-}}
+key={movie.id}
+style={styles.card}
 >
 
 <img
-src={movie.poster}
+
+src={`${IMG}${movie.poster_path}`}
+
 alt={movie.title}
 
-style={{
-width:"100%",
-height:"390px",
-objectFit:"cover"
-}}
+style={styles.poster}
+
 />
 
-<div style={{padding:"20px"}}>
+<div style={styles.content}>
 
-<h3>{movie.title}</h3>
+<h3 style={styles.title}>
+{movie.title}
+</h3>
+
+<p>
+Rating: {movie.vote_average}
+</p>
+
+<p>
+Votes: {movie.vote_count}
+</p>
+
+<p>
+Popularity: {Math.round(movie.popularity)}
+</p>
+
+<p>
+Release: {movie.release_date}
+</p>
 
 <button
 
-onClick={()=>setSelectedTrailer(movie.trailer)}
+style={styles.trailerBtn}
 
-style={{
-background:"red",
-color:"white",
-padding:"12px",
-border:"none",
-borderRadius:"10px",
-cursor:"pointer",
-width:"100%"
-}}
+onClick={()=>openTrailer(movie.id)}
 
 >
 
-▶ Watch Trailer
+Watch Trailer
 
 </button>
 
@@ -195,72 +223,35 @@ width:"100%"
 
 )}
 
-{selectedTrailer && (
+{trailerUrl && (
 
-<div
+<div style={styles.modal}>
 
-style={{
-position:"fixed",
-top:0,
-left:0,
-width:"100%",
-height:"100%",
-background:"rgba(0,0,0,0.9)",
-
-display:"flex",
-justifyContent:"center",
-alignItems:"center",
-
-zIndex:9999
-}}
-
->
-
-<div style={{position:"relative"}}>
+<div style={styles.modalBox}>
 
 <button
 
-onClick={()=>setSelectedTrailer(null)}
+style={styles.closeBtn}
 
-style={{
-position:"absolute",
-top:"-50px",
-right:"0",
-background:"red",
-color:"white",
-border:"none",
-padding:"10px 15px",
-cursor:"pointer",
-fontSize:"18px",
-borderRadius:"8px"
-}}
+onClick={()=>setTrailerUrl(null)}
 
 >
 
-✖ Close
+Close
 
 </button>
 
 <iframe
 
-width="900"
-height="500"
-
-src={selectedTrailer}
+src={trailerUrl}
 
 title="Trailer"
 
-frameBorder="0"
-
-allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-
 allowFullScreen
 
-style={{
-borderRadius:"15px"
-}}
+style={styles.iframe}
 
-></iframe>
+/>
 
 </div>
 
@@ -270,8 +261,138 @@ borderRadius:"15px"
 
 </div>
 
-)
+);
 
 }
 
-export default App;
+const styles={
+
+app:{
+background:"#111",
+minHeight:"100vh",
+padding:"40px",
+fontFamily:"Arial",
+color:"white"
+},
+
+logo:{
+fontSize:"80px",
+textAlign:"center",
+marginBottom:"55px",
+fontWeight:"bold"
+},
+
+genreWrap:{
+display:"flex",
+flexWrap:"wrap",
+justifyContent:"center",
+gap:"18px"
+},
+
+genreBtn:{
+background:"#1E1E1E",
+color:"white",
+padding:"18px 28px",
+border:"1px solid #444",
+borderRadius:"10px",
+cursor:"pointer",
+fontSize:"17px",
+fontWeight:"bold"
+},
+
+backBtn:{
+background:"#333",
+color:"white",
+padding:"12px 18px",
+border:"none",
+borderRadius:"8px",
+cursor:"pointer",
+marginBottom:"25px"
+},
+
+genreTitle:{
+textAlign:"center",
+marginBottom:"35px"
+},
+
+grid:{
+display:"grid",
+gridTemplateColumns:
+"repeat(auto-fill,minmax(260px,1fr))",
+gap:"28px"
+},
+
+card:{
+background:"#1A1A1A",
+borderRadius:"14px",
+overflow:"hidden",
+boxShadow:
+"0 0 18px rgba(0,0,0,0.35)"
+},
+
+poster:{
+width:"100%",
+height:"390px",
+objectFit:"cover"
+},
+
+content:{
+padding:"18px"
+},
+
+title:{
+fontSize:"22px",
+marginBottom:"12px"
+},
+
+trailerBtn:{
+width:"100%",
+marginTop:"15px",
+background:"white",
+color:"black",
+padding:"12px",
+border:"none",
+borderRadius:"8px",
+cursor:"pointer",
+fontWeight:"bold"
+},
+
+modal:{
+position:"fixed",
+top:0,
+left:0,
+width:"100%",
+height:"100%",
+background:"rgba(0,0,0,0.92)",
+display:"flex",
+justifyContent:"center",
+alignItems:"center",
+zIndex:9999
+},
+
+modalBox:{
+width:"90%",
+maxWidth:"950px",
+position:"relative"
+},
+
+closeBtn:{
+position:"absolute",
+top:"-50px",
+right:0,
+background:"white",
+color:"black",
+padding:"10px 16px",
+border:"none",
+borderRadius:"8px",
+cursor:"pointer"
+},
+
+iframe:{
+width:"100%",
+height:"520px",
+border:"none",
+borderRadius:"12px"
+}
+
+};
